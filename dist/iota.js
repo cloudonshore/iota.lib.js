@@ -3859,17 +3859,51 @@ Multisig.prototype.initiateTransfer = function(
   }
 
   // Get inputs if we are sending tokens
-  if (true) {
-    var timestamp = Math.floor(Date.now() / 1000);
 
-    // Add input as bundle entry
-    // Only a single entry, signatures will be added later
-    bundle.addEntry(securitySum, inputAddress, toSubtract, tag, timestamp);
+  // Get inputs if we are sending tokens
+  if (totalValue) {
+    var command = {
+      command: "getBalances",
+      addresses: new Array(inputAddress),
+      threshold: 100
+    };
 
-    bundle.finalize();
-    bundle.addTrytes(signatureFragments);
+    self._makeRequest.send(command, function(e, balances) {
+      if (e) return callback(e);
 
-    return callback(null, bundle.bundle);
+      var totalBalance = parseInt(balances.balances[0]);
+
+      if (totalBalance > 0) {
+        var toSubtract = 0 - totalBalance;
+        var timestamp = Math.floor(Date.now() / 1000);
+
+        // Add input as bundle entry
+        // Only a single entry, signatures will be added later
+        bundle.addEntry(securitySum, inputAddress, toSubtract, tag, timestamp);
+      }
+
+      if (totalValue > totalBalance) {
+        return callback(new Error("Not enough balance."));
+      }
+
+      // If there is a remainder value
+      // Add extra output to send remaining funds to
+      if (totalBalance > totalValue) {
+        var remainder = totalBalance - totalValue;
+
+        // Remainder bundle entry if necessary
+        if (!remainderAddress) {
+          return callback(new Error("No remainder address defined"));
+        }
+
+        bundle.addEntry(1, remainderAddress, remainder, tag, timestamp);
+      }
+
+      bundle.finalize();
+      bundle.addTrytes(signatureFragments);
+
+      return callback(null, bundle.bundle);
+    });
   } else {
     return callback(
       new Error(
