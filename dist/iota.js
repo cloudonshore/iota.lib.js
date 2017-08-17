@@ -4688,7 +4688,7 @@ makeRequest.prototype.setProvider = function(provider) {
 makeRequest.prototype.open = function() {
   var request = new XMLHttpRequest();
   request.open("POST", this.provider, true);
-  //request.setRequestHeader('Content-Type','application/json');
+  request.setRequestHeader('Content-Type','application/json');
 
   if (this.token) {
     request.withCredentials = true;
